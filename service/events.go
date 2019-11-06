@@ -12,8 +12,8 @@ type Event struct {
 	gorm.Model
 	Name        string `gorm:"column:name"`
 	Description string `gorm:"column:description"`
-	Owner       User
-	OwnerID     uint
+	User        User
+	UserID      uint
 	City        City
 	CityID      uint
 	Category    Category
@@ -41,7 +41,7 @@ func FindManyEvents(cityID uint, categoryID uint) ([]Event, int, error) {
 	var count int
 
 	tx := db.Begin()
-	tx.Where(Event{CityID: cityID, CategoryID: categoryID}).Preload("Resources").Preload("Category").Preload("Owner").Preload("City").Find(&models)
+	tx.Where(Event{CityID: cityID, CategoryID: categoryID}).Preload("Resources").Preload("Category").Preload("User").Preload("City").Find(&models)
 
 	err := tx.Commit().Error
 	return models, count, err
@@ -50,6 +50,6 @@ func FindManyEvents(cityID uint, categoryID uint) ([]Event, int, error) {
 func FindEventById(ID string) (Event, error) {
 	db := common.GetDB()
 	var event Event
-	err := db.Where(ID).Preload("Resources").Preload("Category").Preload("Owner").Preload("City").Find(&event).Error
+	err := db.Where(ID).Preload("Resources").Preload("Resources.User").Preload("Resources.User.City").Preload("Category").Preload("User").Preload("City").Find(&event).Error
 	return event, err
 }

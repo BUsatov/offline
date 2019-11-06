@@ -64,9 +64,9 @@ type EventSerializer struct {
 }
 
 type ResourceResponse struct {
-	ID       uint         `json:"id"`
-	Value    string       `json:"value"`
-	Assignee service.User `json:"assignee"`
+	ID    uint            `json:"id"`
+	Value string          `json:"value"`
+	User  ProfileResponse `json:"assignee,omitempty"`
 }
 
 type EventResponse struct {
@@ -75,7 +75,7 @@ type EventResponse struct {
 	Description string             `json:"description"`
 	CreatedAt   string             `json:"createdAt"`
 	UpdatedAt   string             `json:"updatedAt"`
-	Owner       ProfileResponse    `json:"owner"`
+	User        ProfileResponse    `json:"owner"`
 	Category    CategoryResponse   `json:"category"`
 	Resources   []ResourceResponse `json:"resources"`
 }
@@ -83,11 +83,6 @@ type EventResponse struct {
 type EventsSerializer struct {
 	C      *gin.Context
 	Events []service.Event
-}
-
-type OwnerSerializer struct {
-	C *gin.Context
-	service.User
 }
 
 type ResourceSerializer struct {
@@ -100,15 +95,12 @@ type ResourcesSerializer struct {
 	Resources []service.Resource
 }
 
-func (s *OwnerSerializer) Response() ProfileResponse {
-	response := ProfileSerializer{s.C, s.User}
-	return response.Response()
-}
-
 func (s *ResourceSerializer) Response() ResourceResponse {
+	userSerializer := ProfileSerializer{s.C, s.User}
 	response := ResourceResponse{
 		ID:    s.ID,
 		Value: s.Value,
+		User:  userSerializer.Response(),
 	}
 	return response
 }
@@ -123,7 +115,7 @@ func (s *ResourcesSerializer) Response() []ResourceResponse {
 }
 
 func (s *EventSerializer) Response() EventResponse {
-	ownerSerializer := OwnerSerializer{s.C, s.Owner}
+	userSerializer := ProfileSerializer{s.C, s.User}
 	categorySetializer := CategorySerializer{s.C, s.Category}
 	resourcesSerializer := ResourcesSerializer{s.C, s.Resources}
 	response := EventResponse{
@@ -133,7 +125,7 @@ func (s *EventSerializer) Response() EventResponse {
 		CreatedAt:   s.CreatedAt.UTC().Format("2006-01-02T15:04:05.999Z"),
 		//UpdatedAt:      s.UpdatedAt.UTC().Format(time.RFC3339Nano),
 		UpdatedAt: s.UpdatedAt.UTC().Format("2006-01-02T15:04:05.999Z"),
-		Owner:     ownerSerializer.Response(),
+		User:      userSerializer.Response(),
 		Category:  categorySetializer.Response(),
 		Resources: resourcesSerializer.Response(),
 	}
@@ -178,7 +170,7 @@ func (s *EventModelValidator) Bind(c *gin.Context) error {
 	s.eventModel.Name = s.Name
 	s.eventModel.Description = s.Description
 	s.eventModel.CategoryID = s.CategoryID
-	s.eventModel.Owner = myUserModel
+	s.eventModel.User = myUserModel
 	s.cityModel.Name = s.City
 	for _, res := range s.Resources {
 		var resource service.Resource

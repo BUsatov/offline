@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,10 @@ type ProfileResponse struct {
 // Put your response logic including wrap the userModel here.
 func (self *ProfileSerializer) Response() ProfileResponse {
 	citySerializer := CitySerializer{self.C, self.City}
+	fmt.Println(self.User, "!!!!!!")
+	if &self.User == nil {
+		return ProfileResponse{}
+	}
 	profile := ProfileResponse{
 		ID:       self.ID,
 		Username: self.Username,

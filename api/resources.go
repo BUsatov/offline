@@ -28,18 +28,5 @@ func AssignResource(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{})
-
-	// if err := eventModelValidator.Bind(c); err != nil {
-	// 	fmt.Println(err)
-	// 	c.JSON(http.StatusUnprocessableEntity, common.NewValidatorError(err))
-	// 	return
-	// }
-
-	// if err := service.NewEvent(&eventModelValidator.eventModel, &eventModelValidator.cityModel, &eventModelValidator.resourceModels); err != nil {
-	// 	c.JSON(http.StatusUnprocessableEntity, common.NewError("database", err))
-	// 	return
-	// }
-	// serializer := EventSerializer{c, eventModelValidator.eventModel}
-	// c.JSON(http.StatusCreated, gin.H{"event": serializer.Response()})
+	c.JSON(http.StatusOK, "ok")
 }

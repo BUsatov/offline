@@ -21,6 +21,7 @@ type User struct {
 	PasswordHash string  `gorm:"column:password;not null"`
 	City         City
 	CityID       uint
+	Resources    []Resource
 }
 
 // What's bcrypt? https://en.wikipedia.org/wiki/Bcrypt
