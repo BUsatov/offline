@@ -10,8 +10,8 @@ import (
 type Resource struct {
 	gorm.Model
 	Value          string `gorm:"column:value"`
-	User           User
-	UserID         uint
+	User           *User
+	UserID         *uint
 	Event          Event
 	EventID        uint
 	ResourceType   ResourceType
@@ -20,16 +20,13 @@ type Resource struct {
 
 func (u *Resource) Assign(user User) error {
 	db := common.GetDB()
-	if u.UserID != 0 {
+	if u.UserID != nil {
 		return errors.New("already assigned")
-	}
-	if u.UserID == user.ID {
-		return errors.New("this user is already assigned")
 	}
 	if u.Event.UserID == user.ID {
 		return errors.New("event creator can't be assigned")
 	}
-	err := db.Model(u).Update(Resource{UserID: user.ID}).Error
+	err := db.Model(u).Update(Resource{UserID: &user.ID}).Error
 	if err != nil {
 		return errors.New("can't assign user")
 	}

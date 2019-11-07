@@ -11,6 +11,92 @@ import (
 	"offline.com/service"
 )
 
+func UsersRegister(router *gin.RouterGroup) {
+	router.POST("/", UsersRegistration)
+	router.POST("/login", UsersLogin)
+}
+
+func UserRegister(router *gin.RouterGroup) {
+	router.GET("/", UserRetrieve)
+	router.PUT("/", UserUpdate)
+}
+
+func ProfileRegister(router *gin.RouterGroup) {
+	router.GET("/me", ProfileRetrieve)
+}
+
+func ProfileRetrieve(c *gin.Context) {
+	myUserModel := c.MustGet("my_user_model").(service.User)
+	userModel, err := service.RetrieveProfile(myUserModel)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, common.NewError("database", err))
+		return
+	}
+	profileSerializer := ProfileSerializer{c, userModel}
+	c.JSON(http.StatusOK, profileSerializer.Response())
+}
+
+func UsersRegistration(c *gin.Context) {
+	userModelValidator := NewUserModelValidator()
+	if err := userModelValidator.Bind(c); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, common.NewValidatorError(err))
+		return
+	}
+
+	if err := service.NewUser(&userModelValidator.userModel, &userModelValidator.cityModel); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, common.NewError("database", err))
+		return
+	}
+	c.Set("my_user_model", userModelValidator.userModel)
+	serializer := UserSerializer{c}
+	c.JSON(http.StatusCreated, gin.H{"user": serializer.Response()})
+}
+
+func UsersLogin(c *gin.Context) {
+	loginValidator := NewLoginValidator()
+	if err := loginValidator.Bind(c); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, common.NewValidatorError(err))
+		return
+	}
+	userModel, err := service.FindOneUser(&service.User{Email: loginValidator.userModel.Email})
+
+	if err != nil {
+		c.JSON(http.StatusForbidden, common.NewError("login", errors.New("Not Registered email or invalid password")))
+		return
+	}
+
+	if userModel.CheckPassword(loginValidator.User.Password) != nil {
+		c.JSON(http.StatusForbidden, common.NewError("login", errors.New("Not Registered email or invalid password")))
+		return
+	}
+	middlewares.UpdateContextUserModel(c, userModel.ID)
+	serializer := UserSerializer{c}
+	c.JSON(http.StatusOK, gin.H{"user": serializer.Response()})
+}
+
+func UserRetrieve(c *gin.Context) {
+	serializer := UserSerializer{c}
+	c.JSON(http.StatusOK, gin.H{"user": serializer.Response()})
+}
+
+func UserUpdate(c *gin.Context) {
+	myUserModel := c.MustGet("my_user_model").(service.User)
+	userModelValidator := NewUserModelValidatorFillWith(myUserModel)
+	if err := userModelValidator.Bind(c); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, common.NewValidatorError(err))
+		return
+	}
+
+	userModelValidator.userModel.ID = myUserModel.ID
+	if err := myUserModel.Update(userModelValidator.userModel); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, common.NewError("database", err))
+		return
+	}
+	middlewares.UpdateContextUserModel(c, myUserModel.ID)
+	serializer := UserSerializer{c}
+	c.JSON(http.StatusOK, gin.H{"user": serializer.Response()})
+}
+
 // =======SERIALIZERS========
 
 type ProfileSerializer struct {
@@ -30,7 +116,7 @@ type ProfileResponse struct {
 // Put your response logic including wrap the userModel here.
 func (self *ProfileSerializer) Response() ProfileResponse {
 	citySerializer := CitySerializer{self.C, self.City}
-	fmt.Println(self.User, "!!!!!!")
+	fmt.Print()
 	if &self.User == nil {
 		return ProfileResponse{}
 	}
@@ -83,6 +169,7 @@ type UserModelValidator struct {
 		City     string `form:"city" json:"city" binding:"omitempty"`
 	} `json:"user"`
 	userModel service.User `json:"-"`
+	cityModel service.City `json:"-"`
 }
 
 // There are some difference when you create or update a model, you need to fill the DataModel before
@@ -103,6 +190,7 @@ func (self *UserModelValidator) Bind(c *gin.Context) error {
 	if self.User.Image != "" {
 		self.userModel.Image = &self.User.Image
 	}
+	self.cityModel.Name = self.User.City
 	return nil
 }
 
@@ -148,90 +236,4 @@ func (self *LoginValidator) Bind(c *gin.Context) error {
 func NewLoginValidator() LoginValidator {
 	loginValidator := LoginValidator{}
 	return loginValidator
-}
-
-func UsersRegister(router *gin.RouterGroup) {
-	router.POST("/", UsersRegistration)
-	router.POST("/login", UsersLogin)
-}
-
-func UserRegister(router *gin.RouterGroup) {
-	router.GET("/", UserRetrieve)
-	router.PUT("/", UserUpdate)
-}
-
-func ProfileRegister(router *gin.RouterGroup) {
-	router.GET("/me", ProfileRetrieve)
-}
-
-func ProfileRetrieve(c *gin.Context) {
-	myUserModel := c.MustGet("my_user_model").(service.User)
-	userModel, err := service.RetrieveProfile(myUserModel)
-	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, common.NewError("database", err))
-		return
-	}
-	profileSerializer := ProfileSerializer{c, userModel}
-	c.JSON(http.StatusOK, profileSerializer.Response())
-}
-
-func UsersRegistration(c *gin.Context) {
-	userModelValidator := NewUserModelValidator()
-	if err := userModelValidator.Bind(c); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, common.NewValidatorError(err))
-		return
-	}
-
-	if err := service.NewUser(&userModelValidator.userModel); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, common.NewError("database", err))
-		return
-	}
-	c.Set("my_user_model", userModelValidator.userModel)
-	serializer := UserSerializer{c}
-	c.JSON(http.StatusCreated, gin.H{"user": serializer.Response()})
-}
-
-func UsersLogin(c *gin.Context) {
-	loginValidator := NewLoginValidator()
-	if err := loginValidator.Bind(c); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, common.NewValidatorError(err))
-		return
-	}
-	userModel, err := service.FindOneUser(&service.User{Email: loginValidator.userModel.Email})
-
-	if err != nil {
-		c.JSON(http.StatusForbidden, common.NewError("login", errors.New("Not Registered email or invalid password")))
-		return
-	}
-
-	if userModel.CheckPassword(loginValidator.User.Password) != nil {
-		c.JSON(http.StatusForbidden, common.NewError("login", errors.New("Not Registered email or invalid password")))
-		return
-	}
-	middlewares.UpdateContextUserModel(c, userModel.ID)
-	serializer := UserSerializer{c}
-	c.JSON(http.StatusOK, gin.H{"user": serializer.Response()})
-}
-
-func UserRetrieve(c *gin.Context) {
-	serializer := UserSerializer{c}
-	c.JSON(http.StatusOK, gin.H{"user": serializer.Response()})
-}
-
-func UserUpdate(c *gin.Context) {
-	myUserModel := c.MustGet("my_user_model").(service.User)
-	userModelValidator := NewUserModelValidatorFillWith(myUserModel)
-	if err := userModelValidator.Bind(c); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, common.NewValidatorError(err))
-		return
-	}
-
-	userModelValidator.userModel.ID = myUserModel.ID
-	if err := myUserModel.Update(userModelValidator.userModel); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, common.NewError("database", err))
-		return
-	}
-	middlewares.UpdateContextUserModel(c, myUserModel.ID)
-	serializer := UserSerializer{c}
-	c.JSON(http.StatusOK, gin.H{"user": serializer.Response()})
 }

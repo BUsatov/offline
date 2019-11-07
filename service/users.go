@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
 	"offline.com/common"
@@ -22,6 +23,7 @@ type User struct {
 	City         City
 	CityID       uint
 	Resources    []Resource
+	Events       []Event
 }
 
 // What's bcrypt? https://en.wikipedia.org/wiki/Bcrypt
@@ -64,8 +66,12 @@ func RetrieveProfile(model User) (User, error) {
 
 // You could input an UserModel which will be saved in database returning with error info
 // 	if err := SaveOne(&userModel); err != nil { ... }
-func NewUser(data interface{}) error {
+func NewUser(data *User, city *City) error {
 	db := common.GetDB()
+	var cityModel City
+	db.FirstOrCreate(&cityModel, city)
+	fmt.Print(city)
+	data.CityID = cityModel.ID
 	err := db.Save(data).Error
 	return err
 }

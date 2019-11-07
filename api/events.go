@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -21,7 +20,6 @@ func EventCreate(c *gin.Context) {
 	eventModelValidator := NewEventModelValidator()
 
 	if err := eventModelValidator.Bind(c); err != nil {
-		fmt.Println(err)
 		c.JSON(http.StatusUnprocessableEntity, common.NewValidatorError(err))
 		return
 	}
@@ -64,9 +62,9 @@ type EventSerializer struct {
 }
 
 type ResourceResponse struct {
-	ID    uint            `json:"id"`
-	Value string          `json:"value"`
-	User  ProfileResponse `json:"assignee,omitempty"`
+	ID    uint             `json:"id"`
+	Value string           `json:"value"`
+	User  *ProfileResponse `json:"assignee"`
 }
 
 type EventResponse struct {
@@ -96,11 +94,17 @@ type ResourcesSerializer struct {
 }
 
 func (s *ResourceSerializer) Response() ResourceResponse {
-	userSerializer := ProfileSerializer{s.C, s.User}
+	var profileResponse *ProfileResponse = nil
+	if s.User != nil {
+		userSerializer := ProfileSerializer{s.C, *s.User}
+		resp := userSerializer.Response()
+		profileResponse = &resp
+	}
+
 	response := ResourceResponse{
 		ID:    s.ID,
 		Value: s.Value,
-		User:  userSerializer.Response(),
+		User:  profileResponse,
 	}
 	return response
 }

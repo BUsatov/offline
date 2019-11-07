@@ -1,8 +1,6 @@
 package service
 
 import (
-	"fmt"
-
 	"github.com/jinzhu/gorm"
 
 	"offline.com/common"
@@ -24,7 +22,6 @@ type Event struct {
 func NewEvent(data *Event, cityData interface{}, resourceModels *[]Resource) error {
 	db := common.GetDB()
 	var cityModel City
-	fmt.Println(resourceModels)
 	db.FirstOrCreate(&cityModel, cityData)
 	data.CityID = cityModel.ID
 	err := db.Create(&data).Error
@@ -41,7 +38,7 @@ func FindManyEvents(cityID uint, categoryID uint) ([]Event, int, error) {
 	var count int
 
 	tx := db.Begin()
-	tx.Where(Event{CityID: cityID, CategoryID: categoryID}).Preload("Resources").Preload("Category").Preload("User").Preload("City").Find(&models)
+	tx.Where(Event{CityID: cityID, CategoryID: categoryID}).Preload("Resources.User").Preload("Resources").Preload("Category").Preload("User").Preload("City").Find(&models)
 
 	err := tx.Commit().Error
 	return models, count, err
@@ -50,6 +47,6 @@ func FindManyEvents(cityID uint, categoryID uint) ([]Event, int, error) {
 func FindEventById(ID string) (Event, error) {
 	db := common.GetDB()
 	var event Event
-	err := db.Where(ID).Preload("Resources").Preload("Resources.User").Preload("Resources.User.City").Preload("Category").Preload("User").Preload("City").Find(&event).Error
+	err := db.Where(ID).Preload("User").Preload("Resources").Preload("Resources.User").Preload("Resources.User.City").Preload("Category").Preload("City").Find(&event).Error
 	return event, err
 }
